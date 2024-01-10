@@ -1,4 +1,4 @@
-package client
+package onelogin
 
 import (
 	"bytes"
@@ -6,7 +6,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	urlpkg "net/url"
 	"time"
+)
+
+const (
+	DefaultTimeout = 10 * time.Second
 )
 
 type Client struct {
@@ -40,6 +45,10 @@ const (
 )
 
 func NewClient(config ClientConfig) (*Client, error) {
+	if config.Timeout == 0 {
+		config.Timeout = DefaultTimeout
+	}
+
 	c := &Client{
 		config: config,
 		httpClient: &http.Client{
@@ -57,12 +66,9 @@ func (c *Client) getToken() (*AuthResponse, error) {
 	authURL := fmt.Sprintf("https://%s.onelogin.com/auth/oauth2/v2/token", c.config.Subdomain)
 
 	// Convert payload to JSON
-	jsonData, err := json.Marshal(map[string]string{
+	jsonData, _ := json.Marshal(map[string]string{
 		"grant_type": "client_credentials",
 	})
-	if err != nil {
-		return nil, err
-	}
 
 	req, err := http.NewRequest(http.MethodPost, authURL, bytes.NewBuffer(jsonData))
 	if err != nil {
@@ -91,7 +97,35 @@ func (c *Client) getToken() (*AuthResponse, error) {
 }
 
 func (c *Client) exec(method method, path string, body io.Reader, respModel interface{}) error {
-	httpReq, err := http.NewRequest(string(method), fmt.Sprintf("https://%s.onelogin.com%s", c.config.Subdomain, path), body)
+	return c.execRequest(oneloginRequest{
+		method:    method,
+		path:      path,
+		body:      body,
+		respModel: respModel,
+	})
+
+}
+
+type oneloginRequest struct {
+	method      method
+	path        string
+	body        io.Reader
+	queryParams map[string]string
+	respModel   interface{}
+}
+
+func (c *Client) execRequest(req oneloginRequest) error {
+	url := fmt.Sprintf("https://%s.onelogin.com%s", c.config.Subdomain, req.path)
+	if req.queryParams != nil && len(req.queryParams) > 0 {
+		queryParams := urlpkg.Values{}
+		for key, value := range req.queryParams {
+			queryParams.Add(key, value)
+		}
+
+		url += "?" + queryParams.Encode()
+	}
+
+	httpReq, err := http.NewRequest(string(req.method), url, req.body)
 	if err != nil {
 		return err
 	}
@@ -115,8 +149,8 @@ func (c *Client) exec(method method, path string, body io.Reader, respModel inte
 		return fmt.Errorf("request failed with status code %d\n%s", resp.StatusCode, string(bodyBytes))
 	}
 
-	if respModel != nil {
-		return json.NewDecoder(resp.Body).Decode(respModel)
+	if req.respModel != nil {
+		return json.NewDecoder(resp.Body).Decode(req.respModel)
 	}
 
 	return nil

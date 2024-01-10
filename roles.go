@@ -1,26 +1,31 @@
-package client
+package onelogin
 
 import (
 	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-
-	"github.com/ghaggin/onelogin-go-client/models"
-	"github.com/ghaggin/onelogin-go-client/util"
 )
 
-func (c *Client) ListRoles() ([]*models.Role, error) {
+type Role struct {
+	ID     int    `json:"id,omitempty"`
+	Name   string `json:"name,omitempty"`
+	Admins []int  `json:"admins,omitempty"`
+	Apps   []int  `json:"apps,omitempty"`
+	Users  []int  `json:"users,omitempty"`
+}
+
+func (c *Client) ListRoles() ([]*Role, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (c *Client) CreateRole(role *models.Role) (*models.Role, error) {
+func (c *Client) CreateRole(role *Role) (*Role, error) {
 	body, err := json.Marshal(role)
 	if err != nil {
 		return nil, err
 	}
 
-	var newRole models.Role
+	var newRole Role
 	err = c.exec(POST, "/api/2/roles", bytes.NewReader(body), &newRole)
 	if err != nil {
 		return nil, err
@@ -30,13 +35,13 @@ func (c *Client) CreateRole(role *models.Role) (*models.Role, error) {
 	return role, nil
 }
 
-func (c *Client) GetRole(id int) (*models.Role, error) {
-	var role models.Role
+func (c *Client) GetRole(id int) (*Role, error) {
+	var role Role
 	err := c.exec(GET, fmt.Sprintf("/api/2/roles/%v", id), nil, &role)
 	return &role, err
 }
 
-func (c *Client) UpdateRole(role *models.Role) (*models.Role, error) {
+func (c *Client) UpdateRole(role *Role) (*Role, error) {
 	// get the current state
 	currentRole, err := c.GetRole(role.ID)
 	if err != nil {
@@ -58,7 +63,7 @@ func (c *Client) UpdateRole(role *models.Role) (*models.Role, error) {
 	}
 
 	// update apps
-	if !util.Equal(role.Apps, currentRole.Apps) {
+	if !sliceEqual(role.Apps, currentRole.Apps) {
 		err = c.setRoleApps(role.ID, role.Apps)
 		if err != nil {
 			return nil, err
@@ -66,7 +71,7 @@ func (c *Client) UpdateRole(role *models.Role) (*models.Role, error) {
 	}
 
 	// update users
-	add, remove := util.Diff(role.Users, currentRole.Users)
+	add, remove := sliceDiff(role.Users, currentRole.Users)
 	if len(add) > 0 {
 		err = c.addRoleUsers(role.ID, add)
 		if err != nil {
@@ -81,7 +86,7 @@ func (c *Client) UpdateRole(role *models.Role) (*models.Role, error) {
 	}
 
 	// update admins
-	add, remove = util.Diff(role.Admins, currentRole.Admins)
+	add, remove = sliceDiff(role.Admins, currentRole.Admins)
 	if len(add) > 0 {
 		err = c.addRoleAdmins(role.ID, add)
 		if err != nil {

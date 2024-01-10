@@ -1,8 +1,11 @@
-package util
+package onelogin
 
-import "slices"
+import (
+	"slices"
+	"strconv"
+)
 
-func Equal(a, b []int) bool {
+func sliceEqual(a, b []int) bool {
 	if len(a) != len(b) {
 		return false
 	}
@@ -20,7 +23,7 @@ func Equal(a, b []int) bool {
 // Diff returns a not in b and b not in a
 //
 // Note: this could be optimized
-func Diff(a, b []int) ([]int, []int) {
+func sliceDiff(a, b []int) ([]int, []int) {
 	var aNotB, bNotA []int
 
 	for _, v := range a {
@@ -36,4 +39,18 @@ func Diff(a, b []int) ([]int, []int) {
 	}
 
 	return aNotB, bNotA
+}
+
+// intSliceToString converts a slice of ints to a string
+func intSliceToString(s []int, sep string) string {
+	if len(s) == 0 {
+		return ""
+	}
+
+	var str string
+	for _, v := range s {
+		str += strconv.Itoa(v)
+		str += sep
+	}
+	return str[:len(str)-len(sep)]
 }
