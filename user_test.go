@@ -3,7 +3,7 @@ package onelogin
 import "time"
 
 func (s *OneLoginTestSuite) Test_ListUsers_success() {
-	users, err := s.client.ListUsers(UserQuery{
+	users, err := s.client.ListUsers(&UserQuery{
 		CreatedSince: time.Now().Add(24 * time.Hour),
 	})
 	s.Nil(err)
@@ -17,7 +17,7 @@ func (s *OneLoginTestSuite) Test_UserOperations() {
 	testEmail := "test_username@example.com"
 
 	// Cleanup user if exists
-	users, err := s.client.ListUsers(UserQuery{
+	users, err := s.client.ListUsers(&UserQuery{
 		Username: testUsername,
 	})
 	s.Require().Nil(err)
@@ -58,7 +58,7 @@ func (s *OneLoginTestSuite) Test_UserOperations() {
 	s.Equal(newUser.ID, gotUser.ID)
 
 	// List users
-	listUsers, err := s.client.ListUsers(UserQuery{
+	listUsers, err := s.client.ListUsers(&UserQuery{
 		Username: testUsername,
 	})
 	s.Require().Nil(err)

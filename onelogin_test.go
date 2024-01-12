@@ -29,7 +29,7 @@ func TestOneLogin(t *testing.T) {
 		ClientID:     clientID,
 		ClientSecret: clientSecret,
 		Subdomain:    subdomain,
-		Timeout:      5 * time.Second,
+		Timeout:      60 * time.Second, // app delete is incredibly slow
 	})
 
 	// Client is required for most tests

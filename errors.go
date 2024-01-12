@@ -15,3 +15,10 @@ type ErrMissingField struct {
 func (e ErrMissingField) Error() string {
 	return "missing field: " + e.Field
 }
+
+// ErrOneloginAPIBroken is returned when a required field is missing
+type ErrOneloginAPIBroken struct{}
+
+func (e ErrOneloginAPIBroken) Error() string {
+	return "Onelogin API is broken"
+}

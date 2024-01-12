@@ -2,11 +2,13 @@ package onelogin
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	urlpkg "net/url"
+	"strconv"
 	"time"
 )
 
@@ -44,6 +46,14 @@ const (
 	DELETE method = http.MethodDelete
 )
 
+// Paging holds common paging parameters for APIs that support paging
+// https://developers.onelogin.com/api-docs/2/getting-started/using-query-parameters#pagination
+type Paging struct {
+	Limit  int    `json:"limit,omitempty"`
+	Page   int    `json:"page,omitempty"`
+	Cursor string `json:"cursor,omitempty"`
+}
+
 func NewClient(config ClientConfig) (*Client, error) {
 	if config.Timeout == 0 {
 		config.Timeout = DefaultTimeout
@@ -57,12 +67,14 @@ func NewClient(config ClientConfig) (*Client, error) {
 	}
 
 	// Attempt to authenticate
-	_, err := c.getToken()
+	ctx, cancel := context.WithTimeout(context.Background(), config.Timeout)
+	defer cancel()
+	_, err := c.getToken(ctx)
 
 	return c, err
 }
 
-func (c *Client) getToken() (*AuthResponse, error) {
+func (c *Client) getToken(ctx context.Context) (*AuthResponse, error) {
 	authURL := fmt.Sprintf("https://%s.onelogin.com/auth/oauth2/v2/token", c.config.Subdomain)
 
 	// Convert payload to JSON
@@ -70,7 +82,7 @@ func (c *Client) getToken() (*AuthResponse, error) {
 		"grant_type": "client_credentials",
 	})
 
-	req, err := http.NewRequest(http.MethodPost, authURL, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, authURL, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, err
 	}
@@ -97,12 +109,14 @@ func (c *Client) getToken() (*AuthResponse, error) {
 }
 
 func (c *Client) exec(method method, path string, body io.Reader, respModel interface{}) error {
-	return c.execRequest(oneloginRequest{
-		method:    method,
-		path:      path,
-		body:      body,
-		respModel: respModel,
-	})
+	return c.execRequest(
+		&oneloginRequest{
+			method:    method,
+			path:      path,
+			body:      body,
+			respModel: respModel,
+		},
+	)
 
 }
 
@@ -114,7 +128,15 @@ type oneloginRequest struct {
 	respModel   interface{}
 }
 
-func (c *Client) execRequest(req oneloginRequest) error {
+func (c *Client) execRequest(req *oneloginRequest) error {
+	return c.execRequestContext(context.Background(), req)
+}
+
+func (c *Client) execRequestContext(ctx context.Context, req *oneloginRequest) error {
+	// add configured timeout to context
+	ctx, cancel := context.WithTimeout(ctx, c.config.Timeout)
+	defer cancel()
+
 	url := fmt.Sprintf("https://%s.onelogin.com%s", c.config.Subdomain, req.path)
 	if req.queryParams != nil && len(req.queryParams) > 0 {
 		queryParams := urlpkg.Values{}
@@ -125,12 +147,12 @@ func (c *Client) execRequest(req oneloginRequest) error {
 		url += "?" + queryParams.Encode()
 	}
 
-	httpReq, err := http.NewRequest(string(req.method), url, req.body)
+	httpReq, err := http.NewRequestWithContext(ctx, string(req.method), url, req.body)
 	if err != nil {
 		return err
 	}
 
-	authResp, err := c.getToken()
+	authResp, err := c.getToken(ctx)
 	if err != nil {
 		return err
 	}
@@ -154,4 +176,18 @@ func (c *Client) execRequest(req oneloginRequest) error {
 	}
 
 	return nil
+}
+
+func addPagingParams(queryParams map[string]string, paging *Paging) map[string]string {
+	if paging.Limit > 0 {
+		queryParams["limit"] = strconv.Itoa(paging.Limit)
+	}
+	if paging.Page > 0 {
+		queryParams["page"] = strconv.Itoa(paging.Page)
+	}
+	if paging.Cursor != "" {
+		queryParams["cursor"] = paging.Cursor
+	}
+
+	return queryParams
 }

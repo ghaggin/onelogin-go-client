@@ -19,7 +19,7 @@ Run the test suite and observe the output
 go test -v
 ```
 
-If you are using VSCode as an editor, add the following settings to `.vscode/settings.json`.  This will allow you to run individual tests from the UI.
+If you are using VSCode with the golang plugin, add the following settings to `.vscode/settings.json`.  This will allow you to run individual tests from the UI.
 ```
 {
     ...
@@ -31,4 +31,5 @@ If you are using VSCode as an editor, add the following settings to `.vscode/set
 }
 ```
 
-For other editors, you are on your own :)
+### TODO
+- ListUsers should take pointer

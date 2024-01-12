@@ -3,31 +3,32 @@ package onelogin
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"strconv"
+	"time"
 )
 
 type App struct {
-	ID                 int                  `json:"id,omitempty"`
-	ConnectorID        int                  `json:"connector_id"`
-	Name               string               `json:"name"`
-	Description        string               `json:"description,omitempty"`
-	Notes              string               `json:"notes,omitempty"`
-	PolicyID           int                  `json:"policy_id,omitempty"`
-	BrandID            int                  `json:"brand_id,omitempty"`
-	IconURL            string               `json:"icon_url,omitempty"`
-	Visible            bool                 `json:"visible,omitempty"`
-	AuthMethod         int                  `json:"auth_method,omitempty"`
-	TabID              int                  `json:"tab_id,omitempty"`
-	CreatedAt          string               `json:"created_at,omitempty"`
-	UpdatedAt          string               `json:"updated_at,omitempty"`
-	RoleIDs            []int                `json:"role_ids,omitempty"`
-	AllowAssumedSignin bool                 `json:"allow_assumed_signin,omitempty"`
-	Provisioning       *Provisioning        `json:"provisioning,omitempty"`
-	SSO                *SSO                 `json:"sso,omitempty"`
-	Configuration      *Configuration       `json:"configuration,omitempty"`
-	Parameters         map[string]Parameter `json:"parameters,omitempty"`
-	EnforcementPoint   *EnforcementPoint    `json:"enforcement_point,omitempty"`
+	ID                 int                   `json:"id,omitempty"`
+	ConnectorID        int                   `json:"connector_id"`
+	Name               string                `json:"name"`
+	Description        string                `json:"description,omitempty"`
+	Notes              string                `json:"notes,omitempty"`
+	PolicyID           int                   `json:"policy_id,omitempty"`
+	BrandID            int                   `json:"brand_id,omitempty"`
+	IconURL            string                `json:"icon_url,omitempty"`
+	Visible            bool                  `json:"visible,omitempty"`
+	AuthMethod         int                   `json:"auth_method,omitempty"`
+	TabID              int                   `json:"tab_id,omitempty"`
+	CreatedAt          string                `json:"created_at,omitempty"`
+	UpdatedAt          string                `json:"updated_at,omitempty"`
+	RoleIDs            []int                 `json:"role_ids,omitempty"`
+	AllowAssumedSignin bool                  `json:"allow_assumed_signin,omitempty"`
+	Provisioning       *Provisioning         `json:"provisioning,omitempty"`
+	SSO                *SSO                  `json:"sso,omitempty"`
+	Configuration      *Configuration        `json:"configuration,omitempty"`
+	Parameters         map[string]*Parameter `json:"parameters,omitempty"`
+	EnforcementPoint   *EnforcementPoint     `json:"enforcement_point,omitempty"`
 }
 
 type Provisioning struct {
@@ -82,16 +83,16 @@ type Configuration struct {
 }
 
 type Parameter struct {
-	ID                        int    `json:"id,omitempty"`
-	Label                     string `json:"label,omitempty"`
-	UserAttributeMappings     string `json:"user_attribute_mappings,omitempty"`
-	UserAttributeMacros       string `json:"user_attribute_macros,omitempty"`
-	AttributesTransformations string `json:"attributes_transformations,omitempty"`
-	Values                    string `json:"values,omitempty"`
-	ProvisionedEntitlements   bool   `json:"provisioned_entitlements,omitempty"`
-	SkipIfBlank               bool   `json:"skip_if_blank,omitempty"`
-	DefaultValues             string `json:"default_values"`
-	IncludeInSamlAssertion    bool   `json:"include_in_saml_assertion,omitempty"`
+	ID                        int         `json:"id,omitempty"`
+	Label                     string      `json:"label,omitempty"`
+	UserAttributeMappings     string      `json:"user_attribute_mappings,omitempty"`
+	UserAttributeMacros       string      `json:"user_attribute_macros,omitempty"`
+	AttributesTransformations string      `json:"attributes_transformations,omitempty"`
+	Values                    string      `json:"values,omitempty"`
+	ProvisionedEntitlements   bool        `json:"provisioned_entitlements,omitempty"`
+	SkipIfBlank               bool        `json:"skip_if_blank,omitempty"`
+	DefaultValues             interface{} `json:"default_values"`
+	IncludeInSamlAssertion    bool        `json:"include_in_saml_assertion,omitempty"`
 }
 
 type EnforcementPoint struct {
@@ -129,13 +130,73 @@ type Resource struct {
 	ResourceID  int     `json:"resource_id,omitempty"`
 }
 
-func (c *Client) ListApps() ([]*App, error) {
-	return nil, errors.New("not implemented")
+type AppAuthMethod int
+
+const (
+	AppAuthMethodNull AppAuthMethod = iota
+	AppAuthMethodPassword
+	AppAuthMethodOpenId
+	AppAuthMethodSAML
+	AppAuthMethodAPI
+	AppAuthMethodGoogle
+	AppAuthMethodForm
+	AppAuthMethodWSFed
+	AppAuthMethodOIDC
+)
+
+type AppQuery struct {
+	Paging
+	Name        string        `json:"name,omitempty"`
+	ConnectorID int           `json:"connector_id,omitempty"`
+	AuthMethod  AppAuthMethod `json:"auth_method,omitempty"`
+}
+
+type AppQueryResponse struct {
+	ID                 int       `json:"id"`
+	ConnectorID        int       `json:"connector_id"`
+	Name               string    `json:"name"`
+	Description        string    `json:"description"`
+	Notes              string    `json:"notes"`
+	Visible            bool      `json:"visible"`
+	AuthMethod         int       `json:"auth_method"`
+	TabID              int       `json:"tab_id"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
+	AllowAssumedSignin bool      `json:"allow_assumed_signin"`
+}
+
+type AppConnectorQuery struct {
+	Paging
+	Name       string        `json:"name,omitempty"`
+	AuthMethod AppAuthMethod `json:"auth_method,omitempty"`
+}
+
+type AppConnectorQueryResponse struct {
+	ID                  int    `json:"id,omitempty"`
+	Name                string `json:"name,omitempty"`
+	AuthMethod          int    `json:"auth_method,omitempty"`
+	AllowsNewParameters bool   `json:"allows_new_parameters,omitempty"`
+	IconURL             string `json:"icon_url,omitempty"`
+}
+
+func (c *Client) ListApps(query *AppQuery) ([]*AppQueryResponse, error) {
+	var apps []*AppQueryResponse
+	err := c.execRequest(&oneloginRequest{
+		method:      GET,
+		path:        "/api/2/apps",
+		respModel:   &apps,
+		queryParams: appQueryToParams(query),
+	})
+	return apps, err
 }
 
 func (c *Client) GetApp(id int) (*App, error) {
 	var app App
-	err := c.exec(GET, fmt.Sprintf("/api/2/apps/%v", id), nil, &app)
+	err := c.execRequest(&oneloginRequest{
+		method:    GET,
+		path:      fmt.Sprintf("/api/2/apps/%v", id),
+		respModel: &app,
+	})
 	return &app, err
 }
 
@@ -146,7 +207,13 @@ func (c *Client) CreateApp(app *App) (*App, error) {
 	}
 
 	var newApp App
-	err = c.exec(POST, "/api/2/apps", bytes.NewReader(body), &newApp)
+	err = c.execRequest(&oneloginRequest{
+		method:    POST,
+		path:      "/api/2/apps",
+		body:      bytes.NewReader(body),
+		respModel: &newApp,
+	})
+
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +224,7 @@ func (c *Client) CreateApp(app *App) (*App, error) {
 
 func (c *Client) UpdateApp(app *App) error {
 	if app.ID == 0 {
-		return errors.New("app ID is required")
+		return ErrMissingField{"id"}
 	}
 
 	// TODO: fix delete parameters when I get a response
@@ -184,7 +251,12 @@ func (c *Client) UpdateApp(app *App) error {
 	}
 
 	var newApp App
-	err = c.exec(PUT, fmt.Sprintf("/api/2/apps/%v", app.ID), bytes.NewReader(body), &newApp)
+	err = c.execRequest(&oneloginRequest{
+		method:    PUT,
+		path:      fmt.Sprintf("/api/2/apps/%v", app.ID),
+		body:      bytes.NewReader(body),
+		respModel: &newApp,
+	})
 	if err != nil {
 		return err
 	}
@@ -192,13 +264,70 @@ func (c *Client) UpdateApp(app *App) error {
 }
 
 func (c *Client) DeleteApp(id int) error {
-	return c.exec(DELETE, fmt.Sprintf("/api/2/apps/%v", id), nil, nil)
+	return c.execRequest(&oneloginRequest{
+		method: DELETE,
+		path:   fmt.Sprintf("/api/2/apps/%v", id),
+	})
+}
+
+func (c *Client) ListConnectorIDs(query *AppConnectorQuery) ([]*AppConnectorQueryResponse, error) {
+	var connectors []*AppConnectorQueryResponse
+	err := c.execRequest(&oneloginRequest{
+		method:      GET,
+		path:        "/api/2/connectors",
+		queryParams: appConnectorQueryToParams(query),
+		respModel:   &connectors,
+	})
+	return connectors, err
 }
 
 func (c *Client) deleteAppParameter(appID, parameterID int) error {
-	return c.exec(DELETE, fmt.Sprintf("/api/2/apps/%v/parameters/%v", appID, parameterID), nil, nil)
+	// return c.execRequest(&oneloginRequest{
+	// 	method: DELETE,
+	// 	path:   fmt.Sprintf("/api/2/apps/%v/parameters/%v", appID, parameterID),
+	// })
+	return ErrOneloginAPIBroken{}
 }
 
 func (c *Client) listAppUsers(appID int) ([]int, error) {
-	return nil, errors.New("not implemented")
+	return nil, ErrNotImplemented{}
+}
+
+func appQueryToParams(query *AppQuery) map[string]string {
+	params := map[string]string{}
+	if query.Name != "" {
+		params["name"] = query.Name
+	}
+
+	// My instance did not have a connector_id 0, so I am considering this null
+	// This might be a bad assumption though..
+	if query.ConnectorID != 0 {
+		params["connector_id"] = strconv.Itoa(query.ConnectorID)
+	}
+
+	if query.AuthMethod != AppAuthMethodNull {
+		params["auth_method"] = strconv.Itoa(authMethodToInt(query.AuthMethod))
+	}
+
+	return addPagingParams(params, &query.Paging)
+}
+
+func appConnectorQueryToParams(query *AppConnectorQuery) map[string]string {
+	params := map[string]string{}
+	if query.Name != "" {
+		params["name"] = query.Name
+	}
+	if query.AuthMethod != AppAuthMethodNull {
+		params["auth_method"] = strconv.Itoa(authMethodToInt(query.AuthMethod))
+	}
+
+	return addPagingParams(params, &query.Paging)
+}
+
+func authMethodToInt(authMethod AppAuthMethod) int {
+	return int(authMethod) - 1
+}
+
+func intToAuthMethod(i int) AppAuthMethod {
+	return AppAuthMethod(i + 1)
 }

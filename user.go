@@ -61,9 +61,9 @@ type UserQuery struct {
 }
 
 // https://developers.onelogin.com/api-docs/2/users/list-users
-func (c *Client) ListUsers(query UserQuery) ([]*User, error) {
+func (c *Client) ListUsers(query *UserQuery) ([]*User, error) {
 	var users []*User
-	err := c.execRequest(oneloginRequest{
+	err := c.execRequest(&oneloginRequest{
 		method:      GET,
 		path:        "/api/2/users",
 		respModel:   &users,
@@ -75,7 +75,7 @@ func (c *Client) ListUsers(query UserQuery) ([]*User, error) {
 // https://developers.onelogin.com/api-docs/2/users/get-user
 func (c *Client) GetUser(id int) (*User, error) {
 	var user User
-	err := c.execRequest(oneloginRequest{
+	err := c.execRequest(&oneloginRequest{
 		method:    GET,
 		path:      fmt.Sprintf("/api/2/users/%v", id),
 		respModel: &user,
@@ -98,7 +98,7 @@ func (c *Client) CreateUser(user *User) (*User, error) {
 	}
 
 	var newUser User
-	err = c.execRequest(oneloginRequest{
+	err = c.execRequest(&oneloginRequest{
 		method: POST,
 		path:   "/api/2/users",
 		body:   bytes.NewReader(body),
@@ -124,7 +124,7 @@ func (c *Client) UpdateUser(user *User) (*User, error) {
 	}
 
 	var updatedUser User
-	err = c.execRequest(oneloginRequest{
+	err = c.execRequest(&oneloginRequest{
 		method:    PUT,
 		path:      fmt.Sprintf("/api/2/users/%v", user.ID),
 		body:      bytes.NewReader(body),
@@ -140,7 +140,7 @@ func (c *Client) UpdateUser(user *User) (*User, error) {
 
 // https://developers.onelogin.com/api-docs/2/users/delete-user
 func (c *Client) DeleteUser(id int) error {
-	return c.execRequest(oneloginRequest{
+	return c.execRequest(&oneloginRequest{
 		method: DELETE,
 		path:   fmt.Sprintf("/api/2/users/%v", id),
 	})
@@ -151,7 +151,7 @@ func (c *Client) GetUserApps(id int) ([]int, error) {
 	return nil, ErrNotImplemented{}
 }
 
-func userQueryToParams(query UserQuery) map[string]string {
+func userQueryToParams(query *UserQuery) map[string]string {
 	params := map[string]string{}
 
 	if !query.CreatedSince.IsZero() {
