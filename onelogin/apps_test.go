@@ -45,7 +45,6 @@ func (s *OneLoginTestSuite) Test_GetApp() {
 	s.Require().Nil(err)
 	s.Require().Equal(1, len(apps))
 
-	s.T().Log(apps[0].ID)
 	app, err := s.client.GetApp(apps[0].ID)
 	s.Require().Nil(err)
 	s.Equal(apps[0].ID, app.ID)

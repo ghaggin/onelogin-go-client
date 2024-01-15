@@ -3,8 +3,8 @@ package onelogin
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"strings"
 )
 
 type Role struct {
@@ -15,8 +15,23 @@ type Role struct {
 	Users  []int  `json:"users,omitempty"`
 }
 
-func (c *Client) ListRoles() ([]*Role, error) {
-	return nil, errors.New("not implemented")
+type RoleQuery struct {
+	Paging
+	Name    string
+	AppID   int
+	AppName string
+	Fields  []string
+}
+
+func (c *Client) ListRoles(query *RoleQuery) ([]*Role, error) {
+	var roles []*Role
+	err := c.execRequest(&oneloginRequest{
+		method:      GET,
+		path:        "/api/2/roles",
+		respModel:   &roles,
+		queryParams: roleQueryToParams(query),
+	})
+	return roles, err
 }
 
 func (c *Client) CreateRole(role *Role) (*Role, error) {
@@ -145,4 +160,23 @@ func (c *Client) modifyRoleAdmins(op method, id int, users []int) error {
 		return err
 	}
 	return c.exec(op, fmt.Sprintf("/api/2/roles/%v/admins", id), bytes.NewReader(body), nil)
+}
+
+func roleQueryToParams(query *RoleQuery) map[string]string {
+	params := map[string]string{}
+
+	if query.Name != "" {
+		params["name"] = query.Name
+	}
+	if query.AppID != 0 {
+		params["app_id"] = fmt.Sprintf("%v", query.AppID)
+	}
+	if query.AppName != "" {
+		params["app_name"] = query.AppName
+	}
+	if len(query.Fields) > 0 {
+		params["fields"] = strings.Join(query.Fields, ",")
+	}
+
+	return addPagingParams(params, &query.Paging)
 }

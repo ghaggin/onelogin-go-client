@@ -41,6 +41,7 @@ type User struct {
 }
 
 type UserQuery struct {
+	Paging
 	CreatedSince     time.Time              `json:"created_since,omitempty"`
 	CreatedUntil     time.Time              `json:"created_until,omitempty"`
 	UpdatedSince     time.Time              `json:"updated_since,omitempty"`
@@ -208,5 +209,5 @@ func userQueryToParams(query *UserQuery) map[string]string {
 		params["fields"] = strings.Join(query.Fields, ",")
 	}
 
-	return params
+	return addPagingParams(params, &query.Paging)
 }
